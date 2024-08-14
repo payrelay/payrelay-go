@@ -2,6 +2,7 @@ package lnurl
 
 import (
 	"context"
+	"net/url"
 )
 
 type Provider interface {
@@ -20,6 +21,7 @@ type WithdrawalConfig struct {
 type Withdrawal struct {
 	LNURL string `json:"lnurl"`
 	ID    string `json:"id"`
+	State string `json:"state"`
 }
 
 func (c *Client) NewWithdrawal(ctx context.Context, cfg *WithdrawalConfig) (*Withdrawal, error) {
@@ -31,6 +33,38 @@ func (c *Client) NewWithdrawal(ctx context.Context, cfg *WithdrawalConfig) (*Wit
 	}
 
 	return &w, nil
+}
+
+func (c *Client) QueryWithdrawal(ctx context.Context, id string) (*Withdrawal, error) {
+	var w Withdrawal
+
+	p, err := url.JoinPath("lnurl", "withdrawal", id)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.provdier.Fetch(ctx, "GET", p, nil, &w)
+	if err != nil {
+		return nil, err
+	}
+
+	return &w, nil
+}
+
+func (c *Client) DeleteWithdrawal(ctx context.Context, id string) error {
+	var res any
+
+	p, err := url.JoinPath("lnurl", "withdrawal", id, "delete")
+	if err != nil {
+		return err
+	}
+
+	err = c.provdier.Fetch(ctx, "POST", p, nil, &res)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func New(p Provider) *Client {
