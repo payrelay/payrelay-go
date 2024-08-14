@@ -89,6 +89,44 @@ func (c *Client) Fetch(ctx context.Context, method string, path string, body any
 	return nil
 }
 
+type InvoiceConfig struct {
+	Amount int `json:"amount"`
+}
+
+type Invoice struct {
+	ID     string `json:"id"`
+	State  string `json:"state"`
+	Amount int    `json:"amount"`
+	PayReq string `json:"payreq"`
+}
+
+func (c *Client) NewInvoice(ctx context.Context, cfg *InvoiceConfig) (*Invoice, error) {
+	var inv Invoice
+
+	err := c.Fetch(ctx, "POST", "/invoice/create", cfg, &inv)
+	if err != nil {
+		return nil, err
+	}
+
+	return &inv, nil
+}
+
+func (c *Client) QueryInvoice(ctx context.Context, id string) (*Invoice, error) {
+	var inv Invoice
+
+	p, err := url.JoinPath("invoice", id)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.Fetch(ctx, "GET", p, nil, &inv)
+	if err != nil {
+		return nil, err
+	}
+
+	return &inv, nil
+}
+
 func (c *Client) LNURL() *lnurl.Client {
 	return lnurl.New(c)
 }
