@@ -7,8 +7,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-
-	"github.com/payrelay/payrelay-go/lnurl"
 )
 
 var base = "https://api.payrelay.dev/2024-06-19"
@@ -127,8 +125,58 @@ func (c *Client) QueryInvoice(ctx context.Context, id string) (*Invoice, error) 
 	return &inv, nil
 }
 
-func (c *Client) LNURL() *lnurl.Client {
-	return lnurl.New(c)
+type LNURLWConfig struct {
+	Amount      int    `json:"amount"`
+	Description string `json:"description"`
+}
+
+type LNURLW struct {
+	LNURL string `json:"lnurl"`
+	ID    string `json:"id"`
+	State string `json:"state"`
+}
+
+func (c *Client) NewLNURLW(ctx context.Context, cfg *LNURLWConfig) (*LNURLW, error) {
+	var w LNURLW
+
+	err := c.Fetch(ctx, "POST", "/lnurl/withdrawal/create", cfg, &w)
+	if err != nil {
+		return nil, err
+	}
+
+	return &w, nil
+}
+
+func (c *Client) QueryLNURLW(ctx context.Context, id string) (*LNURLW, error) {
+	var w LNURLW
+
+	p, err := url.JoinPath("lnurl", "withdrawal", id)
+	if err != nil {
+		return nil, err
+	}
+
+	err = c.Fetch(ctx, "GET", p, nil, &w)
+	if err != nil {
+		return nil, err
+	}
+
+	return &w, nil
+}
+
+func (c *Client) DeleteLNURLW(ctx context.Context, id string) error {
+	var res any
+
+	p, err := url.JoinPath("lnurl", "withdrawal", id, "delete")
+	if err != nil {
+		return err
+	}
+
+	err = c.Fetch(ctx, "POST", p, nil, &res)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 type Config struct {
