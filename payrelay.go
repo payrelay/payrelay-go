@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 )
@@ -18,6 +19,8 @@ type LNURLClient struct {
 type Client struct {
 	cfg *Config
 }
+
+var ErrNotFound = errors.New("not found")
 
 func (c *Client) Fetch(ctx context.Context, method string, path string, body any, value any) error {
 	// Combine the path with the base.
@@ -61,6 +64,11 @@ func (c *Client) Fetch(ctx context.Context, method string, path string, body any
 
 	// Handle error messages.
 	if res.StatusCode != http.StatusOK {
+		// Handle the specical case of not found, where no error message is needed.
+		if res.StatusCode == http.StatusNotFound {
+			return ErrNotFound
+		}
+
 		// HACK: define the error message inline.
 		var v struct {
 			Error struct {
@@ -130,10 +138,65 @@ type LNURLWConfig struct {
 	Description string `json:"description"`
 }
 
+type LNURLWState int
+
+const (
+	LNURLWStateReady LNURLWState = iota
+	LNURLWStateScanned
+	LNURLWStateCallback
+)
+
+func (s *LNURLWState) UnmarshalJSON(data []byte) error {
+	s = new(LNURLWState)
+
+	var v string
+
+	err := json.Unmarshal(data, &v)
+	if err != nil {
+		return err
+	}
+
+	switch v {
+	case "READY":
+		*s = LNURLWStateReady
+
+	case "SCANNED":
+		*s = LNURLWStateScanned
+
+	case "CALLBACK":
+		*s = LNURLWStateCallback
+
+	default:
+		return fmt.Errorf("unknown state: %s", v)
+	}
+
+	return nil
+}
+
+func (s LNURLWState) MarshalJSON() ([]byte, error) {
+	var v string
+
+	switch s {
+	case LNURLWStateReady:
+		v = "READY"
+
+	case LNURLWStateScanned:
+		v = "SCANNED"
+
+	case LNURLWStateCallback:
+		v = "SCANNED"
+
+	default:
+		return nil, fmt.Errorf("unknown state: %d", s)
+	}
+
+	return json.Marshal(v)
+}
+
 type LNURLW struct {
-	LNURL string `json:"lnurl"`
-	ID    string `json:"id"`
-	State string `json:"state"`
+	LNURL string      `json:"lnurl"`
+	ID    string      `json:"id"`
+	State LNURLWState `json:"state"`
 }
 
 func (c *Client) NewLNURLW(ctx context.Context, cfg *LNURLWConfig) (*LNURLW, error) {
