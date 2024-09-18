@@ -147,72 +147,36 @@ const (
 	LNURLWStateCallback
 )
 
-func (s *LNURLWState) UnmarshalJSON(data []byte) error {
-	s = new(LNURLWState)
-
-	var v string
-
-	err := json.Unmarshal(data, &v)
-	if err != nil {
-		return err
-	}
-
-	switch v {
-	case "READY":
-		*s = LNURLWStateReady
-
-	case "SCANNED":
-		*s = LNURLWStateScanned
-
-	case "CALLBACK":
-		*s = LNURLWStateCallback
-
-	default:
-		return fmt.Errorf("unknown state: %s", v)
-	}
-
-	return nil
-}
-
-func (s LNURLWState) MarshalJSON() ([]byte, error) {
-	var v string
-
-	switch s {
-	case LNURLWStateReady:
-		v = "READY"
-
-	case LNURLWStateScanned:
-		v = "SCANNED"
-
-	case LNURLWStateCallback:
-		v = "SCANNED"
-
-	default:
-		return nil, fmt.Errorf("unknown state: %d", s)
-	}
-
-	return json.Marshal(v)
-}
-
 type LNURLW struct {
-	LNURL string      `json:"lnurl"`
-	ID    string      `json:"id"`
-	State LNURLWState `json:"state"`
+	LNURL string
+	ID    string
+	State LNURLWState
 }
 
 func (c *Client) NewLNURLW(ctx context.Context, cfg *LNURLWConfig) (*LNURLW, error) {
-	var w LNURLW
+	var w struct {
+		LNURL string `json:"lnurl"`
+		ID    string `json:"id"`
+	}
 
 	err := c.Fetch(ctx, "POST", "/lnurl/withdrawal/create", cfg, &w)
 	if err != nil {
 		return nil, err
 	}
 
-	return &w, nil
+	return &LNURLW{
+		LNURL: w.LNURL,
+		ID:    w.ID,
+		State: LNURLWStateReady,
+	}, nil
 }
 
 func (c *Client) QueryLNURLW(ctx context.Context, id string) (*LNURLW, error) {
-	var w LNURLW
+	var w struct {
+		LNURL string `json:"lnurl"`
+		ID    string `json:"id"`
+		State string `json:"state"`
+	}
 
 	p, err := url.JoinPath("lnurl", "withdrawal", id)
 	if err != nil {
@@ -224,7 +188,27 @@ func (c *Client) QueryLNURLW(ctx context.Context, id string) (*LNURLW, error) {
 		return nil, err
 	}
 
-	return &w, nil
+	var s LNURLWState
+
+	switch w.State {
+	case "READY":
+		s = LNURLWStateReady
+
+	case "SCANNED":
+		s = LNURLWStateScanned
+
+	case "CALLBACK":
+		s = LNURLWStateCallback
+
+	default:
+		return nil, fmt.Errorf("unknown state: %s", w.State)
+	}
+
+	return &LNURLW{
+		LNURL: w.LNURL,
+		ID:    w.ID,
+		State: s,
+	}, nil
 }
 
 func (c *Client) DeleteLNURLW(ctx context.Context, id string) error {
