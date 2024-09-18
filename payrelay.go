@@ -135,6 +135,7 @@ func (c *Client) QueryInvoice(ctx context.Context, id string) (*Invoice, error) 
 
 type LNURLWConfig struct {
 	Amount      int    `json:"amount"`
+	WebhookURL  string `json:"webhookURL"`
 	Description string `json:"description"`
 }
 
