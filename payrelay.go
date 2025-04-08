@@ -227,6 +227,30 @@ func (c *Client) DeleteLNURLW(ctx context.Context, id string) error {
 	return nil
 }
 
+type PayReq struct {
+	LNURL   string `json:"lnurl"`
+	Address string `json:"address"`
+	Amount  int    `json:"amount"`
+}
+
+func (c *Client) pay(ctx context.Context, lnurlp, address string, amount int) error {
+	req := &PayReq{
+		LNURL:   lnurlp,
+		Address: address,
+		Amount:  amount,
+	}
+
+	return c.Fetch(ctx, "POST", "/lnurl/pay", &req, nil)
+}
+
+func (c *Client) PayLNURLP(ctx context.Context, lnurlp string, amount int) error {
+	return c.pay(ctx, lnurlp, "", amount)
+}
+
+func (c *Client) PayLightningAddress(ctx context.Context, address string, amount int) error {
+	return c.pay(ctx, "", address, amount)
+}
+
 type Config struct {
 	Secret string
 }
